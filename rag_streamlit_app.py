@@ -7,7 +7,7 @@ import streamlit as st
 import torch
 from PyPDF2 import PdfReader
 # ↓ dùng loader có sẵn trong langchain core
-from langchain.document_loaders import PyPDFLoader  
+from langchain_community.document_loaders import PyPDFLoader
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
