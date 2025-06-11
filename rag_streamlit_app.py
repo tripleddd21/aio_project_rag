@@ -1,13 +1,13 @@
 import os
 import tempfile
 
-# Tắt telemetry của ChromaDB (nếu có import nhầm)
 os.environ["CHROMA_DISABLE_TELEMETRY"] = "True"
 
 import streamlit as st
 import torch
 from pypdf import PdfReader
-
+# ↓ dùng loader có sẵn trong langchain core
+from langchain.document_loaders import PyPDFLoader  
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -15,7 +15,6 @@ from transformers import (
     pipeline,
 )
 from langchain import PromptTemplate
-from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
