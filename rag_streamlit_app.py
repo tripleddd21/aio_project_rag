@@ -1,3 +1,6 @@
+import os
+os.environ["CHROMA_DISABLE_TELEMETRY"] = "True"
+
 import streamlit as st
 import tempfile
 import os
