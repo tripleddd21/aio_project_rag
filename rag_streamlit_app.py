@@ -1,20 +1,27 @@
 import os
+import tempfile
+
+# Tắt telemetry của ChromaDB (nếu có import nhầm)
 os.environ["CHROMA_DISABLE_TELEMETRY"] = "True"
 
 import streamlit as st
-import tempfile
-import os
 import torch
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_huggingface.embeddings import HuggingFaceEmbeddings
-from langchain_experimental.text_splitter import SemanticChunker
-from langchain_chroma import Chroma
-from langchain_huggingface.llms import HuggingFacePipeline
-from langchain import hub
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from transformers import BitsAndBytesConfig, AutoModelForCausalLM, AutoTokenizer, pipeline
+from pypdf import PdfReader
 
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    BitsAndBytesConfig,
+    pipeline,
+)
+from langchain import PromptTemplate
+from langchain.document_loaders import PyPDFLoader
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import FAISS
+from langchain.llms import HuggingFacePipeline
+
+# —————————————— State init ——————————————
 if "rag_chain" not in st.session_state:
     st.session_state.rag_chain = None
 if "model_loaded" not in st.session_state:
@@ -24,107 +31,117 @@ if "embeddings" not in st.session_state:
 if "llm" not in st.session_state:
     st.session_state.llm = None
 
+# —————————————— Load embeddings ——————————————
 @st.cache_resource
 def load_embeddings():
     return HuggingFaceEmbeddings(model_name="bkai-foundation-models/vietnamese-bi-encoder")
 
+# —————————————— Load LLM ——————————————
 @st.cache_resource
 def load_llm():
-    nf4_config = BitsAndBytesConfig(
+    # NF4 4-bit quant config
+    nf4 = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_quant_type="nf4",
-        bnb_4bit_compute_quant=True,
-        bnb_4bit_use_double_dtype=torch.bfloat16
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_dtype=False,
     )
-
-    MODEL_NAME = "lmsys/vicuna-7b-v1.5"
+    MODEL = "lmsys/vicuna-7b-v1.5"
     model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
-        quantization_config=nf4_config,
-        low_cpu_mem_usage=True
+        MODEL,
+        quantization_config=nf4,
+        low_cpu_mem_usage=True,
+        device_map="auto",
     )
-    tokenizer= AutoTokenizer.from_pretrained(MODEL_NAME)
-    model_pipeline = pipeline(
-        "text-generation",
+    tokenizer = AutoTokenizer.from_pretrained(MODEL)
+    pipe = pipeline(
+        task="text-generation",
         model=model,
         tokenizer=tokenizer,
         max_new_tokens=512,
         pad_token_id=tokenizer.eos_token_id,
-        device_map="auto"
+        device_map="auto",
     )
-    return HuggingFacePipeline(pipeline=model_pipeline)
+    return HuggingFacePipeline(pipeline=pipe)
 
-def process_pdf(upload_file):
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file.write(upload_file.getvalue())
-        temp_file_path = temp_file.name
-    loader = PyPDFLoader(file_path=temp_file_path)
-    documents = loader.load()
+# —————————————— Xử lý PDF → RAG chain ——————————————
+def process_pdf(uploaded_file):
+    # 1) Lưu tạm PDF
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(uploaded_file.getvalue())
+        pdf_path = tmp.name
 
+    # 2) Load & split văn bản
+    loader = PyPDFLoader(pdf_path)
+    docs = loader.load()
 
-    semantic_splitter = SemanticChunker(
-        embeddings = st.session_state.embeddings,
-        buffer_size=1,
-        brankpoint_threshold_type="percentile",
-        brankpoint_threshold_amount=95,
-        min_chunk_size=500,
-        add_start_index=True
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=50,
+        separators=["\n\n", "\n", " ", ""]
     )
+    chunks = splitter.split_documents(docs)
 
-    docs = semantic_splitter.split_documents(documents)
-    vector_db = Chroma.from_documents(
-        documents = docs,
-        embedding = st.session_state.embeddings
-    )
-    retriever = vector_db.as_retriever()
-    prompt = hub.pull("rlm/rag-prompt")
+    # 3) Build FAISS index
+    embeddings = st.session_state.embeddings
+    vector_db = FAISS.from_documents(chunks, embeddings)
 
-    def format_docs(docs):
-      return "\n\n".join(doc.page_content for doc in docs)
-    
-    rag_chain = (
-        {
-            "context": retriever | format_docs, "question": RunnablePassthrough()
-        }
-        | prompt
-        | st.session_state.llm
-        | StrOutputParser()
+    # 4) Chuẩn bị prompt template
+    prompt_template = """Bạn là trợ lý thông minh. Dưới đây là phần context được trích xuất từ PDF:
+{context}
+
+Hãy trả lời câu hỏi sau bằng tiếng Việt, nếu không có trong context thì xin lỗi và nói bạn không biết:
+Question: {question}
+Answer:"""
+    prompt = PromptTemplate(
+        input_variables=["context", "question"],
+        template=prompt_template
     )
 
-    os.unlink(temp_file_path)
-    return rag_chain, len(docs)
+    # 5) Tạo một function đơn giản cho RAG
+    def rag_chain(question: str) -> str:
+        retriever = vector_db.as_retriever(search_kwargs={"k": 3})
+        docs = retriever.get_relevant_documents(question)
+        context = "\n\n".join([d.page_content for d in docs])
+        text_in = prompt.format(context=context, question=question)
+        return st.session_state.llm(text_in)
 
-# Xây dựng giao diện người dùng
+    # 6) Cleanup
+    os.unlink(pdf_path)
+    return rag_chain, len(chunks)
+
+# —————————————— Giao diện ——————————————
 st.set_page_config(page_title="PDF RAG Assistant", layout="wide")
-st.title("PDF RAG Assistant")
-
+st.title("📝 PDF RAG Assistant (Tiếng Việt)")
 st.markdown("""
-** Ứng dụng AI giúp bạn hỏi đáp trực tiếp với nội dung tài liệu PDF bằng tiếng Việt**
-** Cách sử dụng đơn giản**
-1. ** Upload file ** (Chọn file PDF từ máy tính và nhấn "Xử lý PDF")
-2. ** Đặt câu hỏi ** (Nhập câu hỏi về nội dung tài liệu và nhận câu trả lời ngay lập tức)
-""")  
+Ứng dụng RAG giúp bạn hỏi đáp trực tiếp trong PDF, chỉ với vài bước đơn giản:
 
+1. **Upload** file PDF.
+2. **Process** để tách và index.
+3. **Ask** câu hỏi, nhận trả lời ngay!
+""")
+
+# —————————————— Load model lần đầu ——————————————
 if not st.session_state.model_loaded:
-    st.info("Model loading...")
-    st.session_state.embeddings = load_embeddings()
-    st.session_state.llm = load_llm()
-    st.session_state.model_loaded = True
-    st.success("Model loaded successfully!")
-    st.rerun()
+    with st.spinner("Đang tải model và embeddings…"):
+        st.session_state.embeddings = load_embeddings()
+        st.session_state.llm = load_llm()
+        st.session_state.model_loaded = True
+    st.success("Model và embeddings đã sẵn sàng!")
+    st.experimental_rerun()
 
-uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
-if uploaded_file and st.button("Process PDF"):
-    with st.spinner("Processing PDF..."):
-        st.session_state.rag_chain, num_chunks = process_pdf(uploaded_file)
-        st.success("PDF processed successfully!")
+# —————————————— Upload & Process ——————————————
+uploaded = st.file_uploader("Chọn file PDF", type=["pdf"])
+if uploaded and st.button("Process PDF"):
+    with st.spinner("Đang xử lý PDF…"):
+        st.session_state.rag_chain, n_chunks = process_pdf(uploaded)
+    st.success(f"PDF đã được xử lý và chia thành {n_chunks} chunks.")
 
+# —————————————— Hỏi đáp ——————————————
 if st.session_state.rag_chain:
-    question = st.text_input("Ask a question about the PDF:")
-    if question:
-        with st.spinner("Generating answer..."):
-            output = st.session_state.rag_chain.invoke(question)
-            answer = output.split('Answer: ')[1].strip() if "Answer: " in output else output.strip()
-            st.write("**Answer:**")
-            st.write(answer)
-
+    q = st.text_input("Nhập câu hỏi của bạn:")
+    if q:
+        with st.spinner("Đang sinh câu trả lời…"):
+            resp = st.session_state.rag_chain(q)
+        st.markdown("**Answer:**")
+        st.write(resp)
