@@ -13,7 +13,7 @@ accelerate==1.7.0
 
 # === LANGCHAIN & CHROMA ===
 langchain==0.3.25
-chromadb==0.4.3
+chromadb==0.4.5
 
 # === TIỆN ÍCH KHÁC ===
 python-dotenv==1.1.0
