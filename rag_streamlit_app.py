@@ -5,7 +5,7 @@ os.environ["CHROMA_DISABLE_TELEMETRY"] = "True"
 
 import streamlit as st
 import torch
-from pypdf import PdfReader
+from PyPDF2 import PdfReader
 # ↓ dùng loader có sẵn trong langchain core
 from langchain.document_loaders import PyPDFLoader  
 from transformers import (
