@@ -1,25 +1,29 @@
-# === STREAMLIT & SYNTAX HIGHLIGHT ===
+# —————— CORE WEB APP ——————
 streamlit==1.22.0
 markdown-it-py==2.2.0
 mdurl==0.1.2
 pygments==2.19.1
 rich==13.3.4
 
-# === ML STACK ===
+# —————— AI/ML STACK ——————
 torch==2.2.2
 transformers==4.52.4
 bitsandbytes==0.46.0
 accelerate==1.7.0
 
-# === LANGCHAIN & CHROMA ===
+# —————— LANGCHAIN & VECTORSTORE ——————
 langchain==0.3.25
-chromadb==0.4.5
+faiss-cpu==1.7.4
 
-# === TIỆN ÍCH KHÁC ===
+# Nếu bắt buộc phải dùng ChromaDB, hãy hạ langchain xuống:
+#   langchain==0.3.16
+#   chromadb==0.4.5
+
+# —————— TIỆN ÍCH KHÁC ——————
 python-dotenv==1.1.0
 pypdf==3.12.0
 
-# === PIN ĐỂ TRÁNH CVE / OPEN TELEMETRY ===
+# —————— TRÁNH CVE / OPENTELEMETRY ——————
 opentelemetry-api==1.17.0
 opentelemetry-proto==1.13.0
 protobuf==3.20.3
