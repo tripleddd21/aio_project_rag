@@ -2,7 +2,7 @@
 streamlit==1.22.0
 markdown-it-py==2.2.0
 mdurl==0.1.2
-pygments==2.18.1
+pygments==2.19.1
 rich==13.3.4
 
 # === ML STACK ===
