@@ -21,10 +21,9 @@ faiss-cpu==1.7.4
 # ——— UTILS ———
 python-dotenv==1.1.0
 pypdf==3.12.0
-PyPDF2==3.1.0
+
 
 # ——— TRÁNH CVE / OTEL ———
 opentelemetry-api==1.17.0
 opentelemetry-proto==1.13.0
 protobuf==3.20.3
-PyPDF2
