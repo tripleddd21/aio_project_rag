@@ -5,7 +5,7 @@ os.environ["CHROMA_DISABLE_TELEMETRY"] = "True"
 
 import streamlit as st
 import torch
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 # ↓ dùng loader có sẵn trong langchain core
 from langchain_community.document_loaders import PyPDFLoader
 from transformers import (
@@ -16,6 +16,8 @@ from transformers import (
 )
 from langchain import PromptTemplate
 from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFacePipeline
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.llms import HuggingFacePipeline
