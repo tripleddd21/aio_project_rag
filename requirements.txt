@@ -1,27 +1,25 @@
-# Core
+# PHẦN STREAMLIT & SYNTAX HIGHLIGHT
 streamlit==1.22.0
-
-# Markdown/Rich – ép đúng version Streamlit cần
-markdown-it-py<3.0.0
+markdown-it-py==2.2.0
 mdurl==0.1.2
-pygments==2.16.1
-rich<14.0.0
+pygments==2.19.1
+rich==13.3.4
 
-# Torch + HF
+# ML STACK
 torch==2.0.1
 transformers==4.52.4
-bitsandbytes==0.46.0
 accelerate==1.7.0
+bitsandbytes==0.46.0
 
-# LangChain + Chroma
+# LANGCHAIN & CHROMADB
 langchain==0.3.28
 langchain-chroma==0.4.0
 
-# Utils
+# UTILS
 python-dotenv==1.1.0
 pypdf==3.12.0
 
-# Pin để tránh CVE/OpenTelemetry conflict
+# AVOID CVE
 opentelemetry-api==1.17.0
 opentelemetry-proto==1.13.0
 protobuf==3.20.3
