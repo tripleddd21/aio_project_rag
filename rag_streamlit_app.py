@@ -50,12 +50,28 @@ def load_llm():
         bnb_4bit_use_double_dtype=False,
     )
     MODEL = "lmsys/vicuna-7b-v1.5"
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL,
-        quantization_config=nf4,
-        low_cpu_mem_usage=True,
-        device_map="auto",
-    )
+    if torch.cuda.is_available():
+        # Chỉ quant khi có GPU
+        nf4 = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_dtype=False,
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL,
+            quantization_config=nf4,
+            low_cpu_mem_usage=True,
+            device_map="auto",
+        )
+        device = "cuda"
+    else:
+        # CPU fallback
+        model = AutoModelForCausalLM.from_pretrained(
+            MODEL,
+            low_cpu_mem_usage=True,
+        )
+        device = "cpu"
     tokenizer = AutoTokenizer.from_pretrained(MODEL)
     pipe = pipeline(
         task="text-generation",
@@ -63,7 +79,7 @@ def load_llm():
         tokenizer=tokenizer,
         max_new_tokens=512,
         pad_token_id=tokenizer.eos_token_id,
-        device_map="cpu",
+        device_map=device if device=="cuda" else None,
     )
     return HuggingFacePipeline(pipeline=pipe)
 
