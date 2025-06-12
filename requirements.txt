@@ -14,6 +14,7 @@ accelerate==1.7.0
 # ——— LANGCHAIN ———
 langchain==0.3.25
 langchain-community==0.3.23
+langchain-huggingface==0.2.0
 
 # ——— VECTORSTORE ———
 faiss-cpu==1.7.4
