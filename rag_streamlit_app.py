@@ -16,11 +16,13 @@ from transformers import (
 )
 from langchain import PromptTemplate
 
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.llms import HuggingFacePipeline
+
+import sentence_transformers
 
 # —————————————— State init ——————————————
 if "rag_chain" not in st.session_state:
@@ -62,6 +64,7 @@ def load_llm():
         max_new_tokens=512,
         pad_token_id=tokenizer.eos_token_id,
         device_map="auto",
+        device_map="cpu",
     )
     return HuggingFacePipeline(pipeline=pipe)
 
