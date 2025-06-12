@@ -63,7 +63,6 @@ def load_llm():
         tokenizer=tokenizer,
         max_new_tokens=512,
         pad_token_id=tokenizer.eos_token_id,
-        device_map="auto",
         device_map="cpu",
     )
     return HuggingFacePipeline(pipeline=pipe)
