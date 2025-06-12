@@ -1,30 +1,13 @@
-# ——— CORE WEB APP ———
-streamlit==1.22.0
-markdown-it-py==2.2.0
-mdurl==0.1.2
-pygments==2.19.1
-rich==13.3.4
-
-# ——— AI/ML STACK ———
-torch==2.2.2
 transformers==4.52.4
 bitsandbytes==0.46.0
 accelerate==1.7.0
-
-# ——— LANGCHAIN ———
 langchain==0.3.25
+langchainhub==0.1.21
+langchain-chroma==0.2.4
+langchain-experimental==0.3.4
 langchain-community==0.3.23
-
-# ——— VECTORSTORE ———
-faiss-cpu==1.7.4
-
-# ——— UTILS ———
+langchain-huggingface==0.2.0
 python-dotenv==1.1.0
-pypdf==3.12.0
-
-
-# ——— TRÁNH CVE / OTEL ———
-opentelemetry-api==1.17.0
-opentelemetry-proto==1.13.0
-protobuf==3.20.3
-sentence-transformers==2.2.2
+pypdf
+python-dotenv==1.1.0
+streamlit==1.36.0
